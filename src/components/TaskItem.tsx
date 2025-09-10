@@ -17,7 +17,7 @@ import {
 interface TaskItemProps {
   task: Task;
   onToggle: (id: string) => void;
-  onUpdate: (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => void;
+  onUpdate: (id: string, updates: Partial<Omit<Task, 'id' | 'created_at'>>) => void;
   onDelete: (id: string) => void;
 }
 
@@ -46,14 +46,14 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
     setIsEditing(false);
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (dateString: string) => {
     return new Intl.DateTimeFormat('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-    }).format(date);
+    }).format(new Date(dateString));
   };
 
   return (
@@ -136,10 +136,10 @@ export function TaskItem({ task, onToggle, onUpdate, onDelete }: TaskItemProps) 
               <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
-                  <span>Criado em {formatDate(task.createdAt)}</span>
+                  <span>Criado em {formatDate(task.created_at)}</span>
                 </div>
-                {task.updatedAt.getTime() !== task.createdAt.getTime() && (
-                  <span>• Atualizado em {formatDate(task.updatedAt)}</span>
+                {task.updated_at !== task.created_at && (
+                  <span>• Atualizado em {formatDate(task.updated_at)}</span>
                 )}
               </div>
             </div>

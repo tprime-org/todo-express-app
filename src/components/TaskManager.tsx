@@ -9,6 +9,7 @@ export function TaskManager() {
     tasks,
     filter,
     stats,
+    loading,
     addTask,
     updateTask,
     deleteTask,
@@ -50,7 +51,12 @@ export function TaskManager() {
 
         {/* Task List */}
         <div className="space-y-4">
-          {tasks.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-4">Carregando tarefas...</p>
+            </div>
+          ) : tasks.length === 0 ? (
             <div className="text-center py-12">
               <div className="flex justify-center mb-4">
                 <div className="p-4 bg-muted rounded-2xl">

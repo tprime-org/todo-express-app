@@ -3,8 +3,8 @@ export interface Task {
   title: string;
   description?: string;
   completed: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  created_at: string;
+  updated_at: string;
 }
 
 export type TaskFilter = 'all' | 'pending' | 'completed';

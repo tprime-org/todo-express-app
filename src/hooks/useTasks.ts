@@ -1,62 +1,123 @@
 import { useState, useEffect } from 'react';
 import { Task, TaskFilter, TaskFormData } from '@/types/task';
-
-const STORAGE_KEY = 'taskManager-tasks';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<TaskFilter>('all');
+  const [loading, setLoading] = useState(true);
 
-  // Load tasks from localStorage on mount
+  // Load tasks from Supabase on mount
   useEffect(() => {
-    const savedTasks = localStorage.getItem(STORAGE_KEY);
-    if (savedTasks) {
-      try {
-        const parsedTasks = JSON.parse(savedTasks);
-        setTasks(parsedTasks.map((task: any) => ({
-          ...task,
-          createdAt: new Date(task.createdAt),
-          updatedAt: new Date(task.updatedAt),
-        })));
-      } catch (error) {
-        console.error('Error parsing saved tasks:', error);
-      }
-    }
+    loadTasks();
   }, []);
 
-  // Save tasks to localStorage whenever tasks change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-  }, [tasks]);
+  const loadTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-  const addTask = (taskData: TaskFormData) => {
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      title: taskData.title,
-      description: taskData.description,
-      completed: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setTasks(prev => [newTask, ...prev]);
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      toast({
+        title: "Erro ao carregar tarefas",
+        description: "Não foi possível carregar as tarefas. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateTask = (id: string, updates: Partial<Omit<Task, 'id' | 'createdAt'>>) => {
-    setTasks(prev => prev.map(task => 
-      task.id === id 
-        ? { ...task, ...updates, updatedAt: new Date() }
-        : task
-    ));
+  const addTask = async (taskData: TaskFormData) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([
+          {
+            title: taskData.title,
+            description: taskData.description || null,
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      setTasks(prev => [data, ...prev]);
+      toast({
+        title: "Tarefa criada",
+        description: "A tarefa foi adicionada com sucesso.",
+      });
+    } catch (error) {
+      console.error('Error adding task:', error);
+      toast({
+        title: "Erro ao criar tarefa",
+        description: "Não foi possível criar a tarefa. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(prev => prev.filter(task => task.id !== id));
+  const updateTask = async (id: string, updates: Partial<Omit<Task, 'id' | 'created_at'>>) => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      setTasks(prev => prev.map(task => 
+        task.id === id ? data : task
+      ));
+      toast({
+        title: "Tarefa atualizada",
+        description: "A tarefa foi atualizada com sucesso.",
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Erro ao atualizar tarefa",
+        description: "Não foi possível atualizar a tarefa. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteTask = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setTasks(prev => prev.filter(task => task.id !== id));
+      toast({
+        title: "Tarefa excluída",
+        description: "A tarefa foi removida com sucesso.",
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast({
+        title: "Erro ao excluir tarefa",
+        description: "Não foi possível excluir a tarefa. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   const toggleTask = (id: string) => {
-    updateTask(id, { 
-      completed: !tasks.find(task => task.id === id)?.completed 
-    });
+    const task = tasks.find(task => task.id === id);
+    if (task) {
+      updateTask(id, { completed: !task.completed });
+    }
   };
 
   const filteredTasks = tasks.filter(task => {
@@ -80,6 +141,7 @@ export function useTasks() {
     tasks: filteredTasks,
     filter,
     stats,
+    loading,
     addTask,
     updateTask,
     deleteTask,
